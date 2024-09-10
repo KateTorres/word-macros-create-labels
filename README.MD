@@ -1,5 +1,3 @@
-# Creating the README.md file with the provided content
-
 # Custom Avery Labels Generator
 
 This VBA script is designed to generate custom Avery labels from a table in a Word document. Users can specify the Avery label template code, font size, and colors for specific keywords.
