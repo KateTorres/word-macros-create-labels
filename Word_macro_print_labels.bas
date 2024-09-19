@@ -1,5 +1,6 @@
 Sub CreateCustomLabels()
     On Error GoTo ErrorHandler
+
     Dim doc As Document
     Dim table As table
     Dim cell As cell
@@ -7,7 +8,6 @@ Sub CreateCustomLabels()
     Dim labelDoc As Document
     Dim rowIndex As Integer
     Dim lastRowIndex As Integer
-    Dim volume, temperature, group, comment1, comment2, comment3 As String
     Dim labelCounter As Integer
     Dim labelRow As Integer
     Dim labelCol As Integer
@@ -17,50 +17,76 @@ Sub CreateCustomLabels()
     Dim numColumns As Integer
     Dim rowHeight As Single
     Dim columnWidth As Single
-    Dim activeColor As String
-    Dim reagentColor As String
-    Dim corrosiveColor As String
 
-    ' Prompt user for Avery label template code
-    templateCode = InputBox("Enter Avery label template code (e.g., 6560, 5160, etc.):", "Label Template Code")
+    ' Define each column in the table. In this example, skip Column 1 and Column >7
+    Dim column2, column3, column4, column5, column6, column7 As String
+
+    ' Define 3 types of attributes that will be colored on the labels
+    Dim type1Color As String
+    Dim type2Color As String
+    Dim type3Color As String
+
+    ' Select active document
+    Set doc = ActiveDocument
+
+    ' Select document properties
+    With doc.PageSetup
+        .PaperSize = wdPaperLetter
+        .LeftMargin = InchesToPoints(0.3)
+    End With
+
+    ' Prompt user for Template
+    templateCode = InputBox("Enter Avery label template number (5167 or 6560):", "Avery label template number")
     If templateCode = "" Then
-        MsgBox "Template code is required.", vbExclamation
-        Exit Sub
+        MsgBox "Avery label template number is required.", vbExclamation
+        GoTo ExitSub
+    End If
+
+    ' Prompt user for Project
+    projectName = InputBox("Enter Project", "Project")
+    If projectName = "" Then
+        MsgBox "Project is required.", vbExclamation
+        GoTo ExitSub
+    End If
+
+    ' Prompt user for Lot
+    projectLot = InputBox("Enter Lot", "lot")
+    If projectLot = "" Then
+        MsgBox "Lot is required.", vbExclamation
+        GoTo ExitSub
     End If
 
     ' Set label template settings based on the entered code
     Select Case templateCode
+        Case "5167"
+            numRows = 20
+            numColumns = 4
+            rowHeight = 0.5
+            totalLabels = 400
+            doc.PageSetup.PaperSize = wdPaperLetter
+
         Case "6560"
             numRows = 10
             numColumns = 3
             rowHeight = 1
-            columnWidth = 2.625
-            totalLabels = 30
-        Case "5160"
-            numRows = 10
-            numColumns = 3
-            rowHeight = 1
-            columnWidth = 2.625
-            totalLabels = 30
-        ' Add more cases for other Avery templates as needed
+            totalLabels = 400
+            doc.PageSetup.PaperSize = wdPaperLetter
+
         Case Else
-            MsgBox "Unsupported label template code.", vbExclamation
-            Exit Sub
+            MsgBox "Unsupported label template.", vbExclamation
+            GoTo ExitSub
     End Select
 
     ' Prompt user for colors
-    activeColor = InputBox("Enter color for 'Active' (e.g., Red, Blue, Green):", "Active Color")
-    reagentColor = InputBox("Enter color for 'Reagent' (e.g., Red, Blue, Green):", "Reagent Color")
-    corrosiveColor = InputBox("Enter color for 'Corrosive' (e.g., Red, Blue, Green):", "Corrosive Color")
+    type1Color = InputBox("Enter color for 'Type 1' (Red, Blue, Green):", "Type 1 Color")
+    type2Color = InputBox("Enter color for 'Type 2' (Red, Blue, Green):", "Type 2 Color")
+    type3Color = InputBox("Enter color for 'Type 3' (Red, Blue, Green):", "Type 3 Color")
 
     ' Validate colors
-    If Not IsValidColor(activeColor) Or Not IsValidColor(reagentColor) Or Not IsValidColor(corrosiveColor) Then
+    If Not IsValidColor(type1Color) Or Not IsValidColor(type2Color) Or Not IsValidColor(type3Color) Then
         MsgBox "Invalid color entered. Please use common color names like Red, Blue, Green.", vbExclamation
         Exit Sub
     End If
-
-    ' Reference the active document
-    Set doc = ActiveDocument
 
     ' Check if there is at least one table in the document
     If doc.Tables.Count = 0 Then
@@ -86,18 +112,19 @@ Sub CreateCustomLabels()
 
         ' Get the contents of the specified columns (skip the first column)
         On Error Resume Next
-        volume = CleanCellText(table.cell(rowIndex, 2).Range.text)
-        temperature = CleanCellText(table.cell(rowIndex, 3).Range.text)
-        group = CleanCellText(table.cell(rowIndex, 4).Range.text)
-        comment1 = CleanCellText(table.cell(rowIndex, 5).Range.text)
-        comment2 = CleanCellText(table.cell(rowIndex, 6).Range.text)
-        comment3 = CleanCellText(table.cell(rowIndex, 7).Range.text)
+        column2 = CleanCellText(table.cell(rowIndex, 2).Range.text)
+        column3 = CleanCellText(table.cell(rowIndex, 3).Range.text) & " mL" 'Add or change units, if needed
+        column4 = CleanCellText(table.cell(rowIndex, 4).Range.text)
+        column5 = CleanCellText(table.cell(rowIndex, 5).Range.text) & " C" 'Add or change units, if needed
+        column6 = CleanCellText(table.cell(rowIndex, 6).Range.text)
+        column7 = CleanCellText(table.cell(rowIndex, 7).Range.text)
         On Error GoTo 0
 
         ' Concatenate the contents into the required format
-        labelText = volume & " " & temperature & vbCrLf & _
-                    group & " " & comment1 & vbCrLf & _
-                    comment2 & " " & comment3
+        labelText = projectName & projectLot & vbCrLf & _
+                    column2 & " " & column3 & vbCrLf & _
+                    column4 & " " & column5 & vbCrLf & _
+                    column6 & " " & column7
 
         ' Determine the position of the label in the table
         labelRow = ((labelCounter - 1) \ numColumns) + 1
@@ -124,24 +151,62 @@ Sub CreateCustomLabels()
     Next rowIndex
 
     ' Apply colors to the text in the labels
-    ApplyColorsToLabels labelDoc, activeColor, reagentColor, corrosiveColor
+    ApplyColorsToLabels labelDoc, type1Color, type2Color, type3Color
 
-    ' Save the label document
-    labelDoc.SaveAs2 "CustomLabels.docx"
+    ' Get the current folder path
+    currentFolder = ActiveDocument.Path
+    If currentFolder = "" Then currentFolder = Application.Options.DefaultFilePath(wdDocumentsPath)
+
+    ' Prompt user to select save location and file name
+    Set FileDialog = Application.FileDialog(msoFileDialogSaveAs)
+    With FileDialog
+        .Title = "Save Label Document Output"
+        .InitialFileName = currentFolder & "\" & "Labels_" & projectName & "_" & projectLot & ".docx"
+        If .Show = -1 Then
+            FileName = .SelectedItems(1)
+            'Save the label document
+            labelDoc.SaveAs2 FileName
+
+        Else
+            MsgBox "File saving has been cancelled", vbExclamation
+            GoTo ExitSub
+        End If
+    End With
+
+ExitSub:
     Exit Sub
 
 ErrorHandler:
-    MsgBox "An error occurred: " & Err.Description, vbCritical
+    MsgBox "An error occured: " & Err.Description, vbCritical
+    Resume ExitSub
 End Sub
 
 Sub SetupLabelTemplate(doc As Document, numRows As Integer, numColumns As Integer, rowHeight As Single)
     doc.PageSetup.PageWidth = InchesToPoints(8.5)
     doc.PageSetup.PageHeight = InchesToPoints(11)
     doc.PageSetup.TopMargin = InchesToPoints(0.5)
-    doc.PageSetup.LeftMargin = InchesToPoints(0.25)
     doc.PageSetup.BottomMargin = InchesToPoints(0.5)
+    doc.PageSetup.LeftMargin = InchesToPoints(0.3)
     doc.PageSetup.RightMargin = InchesToPoints(0.25)
     doc.PageSetup.Orientation = wdOrientPortrait
+
+    'Calculate label dimansions based on specified template
+    Dim labelHeight As Single
+    Dim labelWIdth As Single
+    labelHeight = InchesToPoints(0.5)
+    labelWIdth = InchesToPoints(2.1)
+
+    'Calculate pitch dimensions
+    Dim verticalPitch As Single
+    Dim horizontalPitch As Single
+    verticalPitch = InchesToPoints(0.5)
+    horizontalPitch = InchesToPoints(2.05)
+
+    'Calculate table dimensions based on label plus pitch dimensions
+    Dim tableWidth As Single
+    Dim tableHeight As Single
+    tableWidth = numColumns * (labelWIdth + horizontalPitch) - horizontalPitch
+    tableHeight = numRows * (labelHeight + verticalPitch) - verticalPitch
 
     With doc.Tables.Add(Range:=doc.Range, numRows:=numRows, numColumns:=numColumns)
         .TopPadding = 0
@@ -153,6 +218,10 @@ Sub SetupLabelTemplate(doc As Document, numRows As Integer, numColumns As Intege
         .PreferredWidthType = wdPreferredWidthAuto
         .Rows.Height = InchesToPoints(rowHeight)
         .Rows.HeightRule = wdRowHeightExactly
+        .PreferredWidth = tableWidth
+        .Rows.SetHeight rowHeight:=labelHeight, HeightRule:=wdRowHeightExactly
+        .Columns.SetWidth columnWidth:=labelWIdth, RulerStyle:=wdAdjustNone
+
     End With
 End Sub
 
@@ -162,22 +231,22 @@ End Function
 
 Function IsValidColor(color As String) As Boolean
     Select Case LCase(color)
-        Case "red", "blue", "green", "yellow", "black", "white", "cyan", "magenta"
+        Case "red", "blue", "green"
             IsValidColor = True
         Case Else
             IsValidColor = False
     End Select
 End Function
 
-Sub ApplyColorsToLabels(labelDoc As Document, activeColor As String, reagentColor As String, corrosiveColor As String)
+Sub ApplyColorsToLabels(labelDoc As Document, type1Color As String, type2Color As String, type3Color As String)
     Dim labelRange As Range
     Dim para As Paragraph
 
     For Each para In labelDoc.Paragraphs
         Set labelRange = para.Range
-        ApplyColorToWord labelRange, "Active", activeColor
-        ApplyColorToWord labelRange, "Reagent", reagentColor
-        ApplyColorToWord labelRange, "Corrosive", corrosiveColor
+        ApplyColorToWord labelRange, "Type 1", type1Color
+        ApplyColorToWord labelRange, "Type 2", type2Color
+        ApplyColorToWord labelRange, "Type 3", type3Color
     Next para
 End Sub
 
