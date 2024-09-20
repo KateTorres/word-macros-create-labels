@@ -121,7 +121,7 @@ Sub CreateCustomLabels()
         On Error GoTo 0
 
         ' Concatenate the contents into the required format
-        labelText = projectName & projectLot & vbCrLf & _
+        labelText = projectName & " " & projectLot & vbCrLf & _
                     column2 & " " & column3 & vbCrLf & _
                     column4 & " " & column5 & vbCrLf & _
                     column6 & " " & column7
